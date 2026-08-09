@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Risk Prediction System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1>🌊 Flood Risk Prediction System</h1>
+        <p>Machine Learning Based Early Flood Warning System for Tamil Nadu</p>
+    </div>
+
+    <form action="/predict" method="POST">
+
+        <label>Select District</label>
+
+        <select name="district" required>
+            {% for district in districts %}
+            <option value="{{ district }}">{{ district }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Select Month</label>
+
+        <select name="month" required>
+            {% for month in months %}
+            <option value="{{ month }}">{{ month }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Total Rainfall (mm)</label>
+
+        <input
+            type="number"
+            name="rainfall"
+            step="0.01"
+            placeholder="Enter total rainfall"
+            required
+        >
+
+        <button type="submit">
+            🌊 Predict Flood Risk
+        </button>
+
+    </form>
+
+    {% if prediction %}
+
+    <div class="result {{ status }}">
+
+        {% if status == "high" %}
+
+        <div class="risk-badge high-badge">
+            🔴 HIGH FLOOD RISK
+        </div>
+
+        {% else %}
+
+        <div class="risk-badge low-badge">
+            🟢 LOW FLOOD RISK
+        </div>
+
+        {% endif %}
+
+        <h2>{{ prediction }}</h2>
+
+        <p><strong>District:</strong> {{ request.form['district'] }}</p>
+        <p><strong>Month:</strong> {{ request.form['month'] }}</p>
+        <p><strong>Rainfall:</strong> {{ request.form['rainfall'] }} mm</p>
+
+        <h3>Recommended Actions</h3>
+
+        <ul>
+            {% for item in advice %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+
+    </div>
+
+    {% endif %}
+
+    <div class="info-card">
+
+        <h3>📌 About this System</h3>
+
+        <p>
+            This Flood Risk Prediction System is a Machine Learning-based web application
+            developed to estimate the possibility of flood occurrence in Tamil Nadu.
+            The prediction is based on three important parameters:
+            <strong>District</strong>,
+            <strong>Month</strong> and
+            <strong>Total Rainfall</strong>.
+            A trained Random Forest machine learning model analyzes these inputs
+            and predicts whether the selected area has a
+            <strong>High Flood Risk</strong> or
+            <strong>Low Flood Risk</strong>.
+            The system also provides safety recommendations to help users take
+            preventive measures during heavy rainfall.
+        </p>
+
+    </div>
+
+    <div class="info-card">
+
+        <h3>🚨 Emergency Helpline Numbers</h3>
+
+        <ul>
+            <li>🚑 Ambulance : <strong>108</strong></li>
+            <li>🚒 Fire Service : <strong>101</strong></li>
+            <li>👮 Police : <strong>100</strong></li>
+            <li>🌊 Disaster Management : <strong>1070</strong></li>
+        </ul>
+
+    </div>
+
+</div>
+
+</body>
+</html>
