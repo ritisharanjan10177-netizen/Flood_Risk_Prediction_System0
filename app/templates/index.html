@@ -1,27 +1,61 @@
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Flood Risk Prediction System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
 
 <div class="header">
+
     <h1>🌊 Flood Risk Prediction System</h1>
-    <p>Machine Learning Based Early Flood Warning System for Tamil Nadu</p>
+
+    <p>
+        Machine Learning Based Early Flood Warning System for Tamil Nadu
+    </p>
+
 </div>
 
+
 <form action="/predict" method="POST">
+
+    <!-- DISTRICT -->
 
     <label>Select District</label>
 
     <select name="district" required>
-        <option value="" disabled selected>Select a district</option>
+
+        <option value="" disabled selected>
+            Select a district
+        </option>
 
         {% for district in districts %}
-        <option value="{{ district }}">{{ district }}</option>
+
+        <option value="{{ district }}">
+            {{ district }}
+        </option>
+
         {% endfor %}
 
     </select>
 
+
+    <!-- MONTH -->
+
     <label>Select Month</label>
 
     <select name="month" required>
-        <option value="" disabled selected>Select a month</option>
+
+        <option value="" disabled selected>
+            Select a month
+        </option>
 
         <option value="1">January</option>
         <option value="2">February</option>
@@ -38,46 +72,81 @@
 
     </select>
 
+
+    <!-- TOTAL RAINFALL -->
+
     <label>Total Rainfall (mm)</label>
 
     <input
         type="number"
+        id="rainfall"
         name="rainfall"
         step="0.01"
-        placeholder="Enter total rainfall"
+        placeholder="Total rainfall will appear automatically"
+        readonly
         required
     >
 
+
+    <!-- PREDICT BUTTON -->
+
     <button type="submit">
+
         🌊 Predict Flood Risk
+
     </button>
 
 </form>
+
+
+<!-- PREDICTION RESULT -->
 
 {% if prediction %}
 
 <div class="result {{ status }}">
 
+
     {% if status == "high" %}
 
     <div class="risk-badge high-badge">
+
         🔴 HIGH FLOOD RISK
+
     </div>
 
     {% else %}
 
     <div class="risk-badge low-badge">
+
         🟢 LOW FLOOD RISK
+
     </div>
 
     {% endif %}
 
-    <h2>{{ prediction }}</h2>
 
-    <p><strong>District:</strong> {{ request.form['district'] }}</p>
+    <h2>
 
-    <p><strong>Month:</strong>
+        {{ prediction }}
+
+    </h2>
+
+
+    <p>
+
+        <strong>District:</strong>
+
+        {{ request.form['district'] }}
+
+    </p>
+
+
+    <p>
+
+        <strong>Month:</strong>
+
         {% set month_names = {
+
             '1': 'January',
             '2': 'February',
             '3': 'March',
@@ -90,30 +159,66 @@
             '10': 'October',
             '11': 'November',
             '12': 'December'
+
         } %}
 
-        {{ month_names.get(request.form['month'], request.form['month']) }}
+        {{ month_names.get(
+            request.form['month'],
+            request.form['month']
+        ) }}
+
     </p>
 
-    <p><strong>Rainfall:</strong> {{ request.form['rainfall'] }} mm</p>
 
-    <h3>Recommended Actions</h3>
+    <p>
+
+        <strong>Rainfall:</strong>
+
+        {{ request.form['rainfall'] }} mm
+
+    </p>
+
+
+    <h3>
+
+        Recommended Actions
+
+    </h3>
+
 
     <ul>
+
         {% for item in advice %}
-        <li>{{ item }}</li>
+
+        <li>
+
+            {{ item }}
+
+        </li>
+
         {% endfor %}
+
     </ul>
+
 
 </div>
 
 {% endif %}
 
+
+<!-- ABOUT SYSTEM -->
+
 <div class="info-card">
 
-    <h3>📌 About this System</h3>
+    <h3>
+
+        📌 About this System
+
+    </h3>
+
 
     <p>
+
         This Flood Risk Prediction System is a Machine Learning-based web application
         developed to estimate the possibility of flood occurrence in Tamil Nadu.
         The prediction is based on three important parameters:
@@ -126,19 +231,158 @@
         <strong>Low Flood Risk</strong>.
         The system also provides safety recommendations to help users take
         preventive measures during heavy rainfall.
+
     </p>
 
 </div>
 
+
+<!-- EMERGENCY HELPLINE -->
+
 <div class="info-card">
 
-    <h3>🚨 Emergency Helpline Numbers</h3>
+    <h3>
+
+        🚨 Emergency Helpline Numbers
+
+    </h3>
+
 
     <ul>
-        <li>🚑 Ambulance : <strong>108</strong></li>
-        <li>🚒 Fire Service : <strong>101</strong></li>
-        <li>👮 Police : <strong>100</strong></li>
-        <li>🌊 Disaster Management : <strong>1070</strong></li>
+
+        <li>
+            🚑 Ambulance : <strong>108</strong>
+        </li>
+
+        <li>
+            🚒 Fire Service : <strong>101</strong>
+        </li>
+
+        <li>
+            👮 Police : <strong>100</strong>
+        </li>
+
+        <li>
+            🌊 Disaster Management : <strong>1070</strong>
+        </li>
+
     </ul>
 
 </div>
+
+
+<!-- AUTOMATIC RAINFALL JAVASCRIPT -->
+
+<script>
+
+const districtSelect =
+    document.querySelector('select[name="district"]');
+
+const monthSelect =
+    document.querySelector('select[name="month"]');
+
+const rainfallInput =
+    document.getElementById('rainfall');
+
+
+async function updateRainfall() {
+
+    const district =
+        districtSelect.value;
+
+    const month =
+        monthSelect.value;
+
+
+    /*
+        Keep rainfall blank
+        until both district
+        and month are selected.
+    */
+
+    if (!district || !month) {
+
+        rainfallInput.value = "";
+
+        return;
+
+    }
+
+
+    try {
+
+        const response = await fetch(
+            `/get_rainfall?district=${encodeURIComponent(district)}&month=${encodeURIComponent(month)}`
+        );
+
+
+        const data =
+            await response.json();
+
+
+        /*
+            If rainfall exists,
+            automatically put it
+            inside the rainfall box.
+        */
+
+        if (
+            data.rainfall !== null &&
+            data.rainfall !== undefined
+        ) {
+
+            rainfallInput.value =
+                data.rainfall;
+
+        }
+
+        else {
+
+            rainfallInput.value = "";
+
+        }
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Rainfall error:",
+            error
+        );
+
+        rainfallInput.value = "";
+
+    }
+
+}
+
+
+/*
+    Run the rainfall function
+    whenever the district changes.
+*/
+
+districtSelect.addEventListener(
+    "change",
+    updateRainfall
+);
+
+
+/*
+    Run the rainfall function
+    whenever the month changes.
+*/
+
+monthSelect.addEventListener(
+    "change",
+    updateRainfall
+);
+
+</script>
+
+
+</body>
+
+</html>

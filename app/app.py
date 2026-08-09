@@ -91,7 +91,7 @@ def get_rainfall_from_dataset(district_name, month_name):
         os.path.dirname(os.path.dirname(__file__)),
         "dataset",
         "raw_data",
-        "TamilNadu_Rainfall.csv"
+       "Indian Rainfall Dataset District-wise Daily Measurements.csv"
     )
 
     # If dataset is not found, try the current folder
@@ -118,7 +118,7 @@ def get_rainfall_from_dataset(district_name, month_name):
             encoding="utf-8-sig"
         ) as file:
 
-            reader = csv.DictReader(file)
+            reader = csv.DictReader(file, delimiter=";")
 
             if not reader.fieldnames:
                 return None
