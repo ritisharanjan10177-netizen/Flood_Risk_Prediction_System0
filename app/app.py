@@ -28,39 +28,51 @@ def normalize_month(month):
     month = str(month).strip().lower()
 
     months = {
+        "1": "january",
         "jan": "january",
         "january": "january",
 
+        "2": "february",
         "feb": "february",
         "february": "february",
 
+        "3": "march",
         "mar": "march",
         "march": "march",
 
+        "4": "april",
         "apr": "april",
         "april": "april",
 
+        "5": "may",
         "may": "may",
 
+        "6": "june",
         "jun": "june",
         "june": "june",
 
+        "7": "july",
         "jul": "july",
         "july": "july",
 
+        "8": "august",
         "aug": "august",
         "august": "august",
 
+        "9": "september",
         "sep": "september",
         "sept": "september",
         "september": "september",
 
+        "10": "october",
         "oct": "october",
         "october": "october",
 
+        "11": "november",
         "nov": "november",
         "november": "november",
 
+        "12": "december",
         "dec": "december",
         "december": "december"
     }
@@ -195,7 +207,9 @@ def get_rainfall_from_dataset(district_name, month_name):
                         try:
 
                             value = float(
-                                str(value).replace(",", "").strip()
+                                str(value)
+                                .replace(",", "")
+                                .strip()
                             )
 
                             rainfall_values.append(value)
@@ -307,7 +321,6 @@ def get_rainfall():
     )
 
     # Keep rainfall blank until both are selected
-
     if not district_name or not month_name:
 
         return jsonify({
