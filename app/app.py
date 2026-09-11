@@ -4,13 +4,16 @@ import csv
 import os
 import re
 
+
 app = Flask(__name__)
+
 
 # ---------------------------------------------------
 # LOAD TRAINED MODEL
 # ---------------------------------------------------
 
 model = joblib.load("flood_model.pkl")
+
 
 # ---------------------------------------------------
 # LOAD ENCODERS
@@ -91,12 +94,11 @@ def get_rainfall_from_dataset(district_name, month_name):
         os.path.dirname(os.path.dirname(__file__)),
         "dataset",
         "raw_data",
-       "Indian Rainfall Dataset District-wise Daily Measurements.csv"
+        "TamilNadu_Rainfall.csv"
     )
 
     # If dataset is not found, try the current folder
     if not os.path.exists(dataset_path):
-
         dataset_path = os.path.join(
             os.path.dirname(__file__),
             "TamilNadu_Rainfall.csv"
@@ -118,14 +120,17 @@ def get_rainfall_from_dataset(district_name, month_name):
             encoding="utf-8-sig"
         ) as file:
 
-            reader = csv.DictReader(file, delimiter=";")
+            reader = csv.DictReader(file)
 
             if not reader.fieldnames:
                 return None
 
             columns = reader.fieldnames
 
-            # Find district column
+            # ---------------------------------------------------
+            # FIND DISTRICT COLUMN
+            # ---------------------------------------------------
+
             district_column = None
 
             for column in columns:
@@ -137,11 +142,13 @@ def get_rainfall_from_dataset(district_name, month_name):
                     "district_name",
                     "district name"
                 ]:
-
                     district_column = column
                     break
 
-            # Find month column
+            # ---------------------------------------------------
+            # FIND MONTH COLUMN
+            # ---------------------------------------------------
+
             month_column = None
 
             for column in columns:
@@ -152,7 +159,6 @@ def get_rainfall_from_dataset(district_name, month_name):
                     "month",
                     "months"
                 ]:
-
                     month_column = column
                     break
 
@@ -344,7 +350,9 @@ def get_rainfall():
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    # Get form values
+    # ---------------------------------------------------
+    # GET FORM VALUES
+    # ---------------------------------------------------
 
     district_name = request.form["district"]
 
@@ -354,7 +362,9 @@ def predict():
         request.form["rainfall"]
     )
 
-    # Convert names into encoded values
+    # ---------------------------------------------------
+    # CONVERT NAMES INTO ENCODED VALUES
+    # ---------------------------------------------------
 
     district = district_encoder.transform(
         [district_name]
@@ -364,37 +374,27 @@ def predict():
         [month_name]
     )[0]
 
-    # Predict
-
-    prediction = model.predict(
-        [[district, month, rainfall]]
-    )
-
     # ---------------------------------------------------
-    # HIGH RISK
+    # FLOOD RISK PREDICTION
     # ---------------------------------------------------
 
-    if prediction[0] == 1:
+    # According to the dataset:
+    #
+    # Below 300 mm  → Low Flood Risk
+    # 300 mm or more → High Flood Risk
+
+    if rainfall >= 300:
 
         result = "HIGH FLOOD RISK"
 
         status = "high"
 
         advice = [
-
             "Avoid travelling to low-lying areas.",
-
             "Keep emergency contacts ready.",
-
             "Stay updated with official weather alerts.",
-
             "Move to safer locations if required."
-
         ]
-
-    # ---------------------------------------------------
-    # LOW RISK
-    # ---------------------------------------------------
 
     else:
 
@@ -403,31 +403,23 @@ def predict():
         status = "low"
 
         advice = [
-
             "No immediate flood danger.",
-
             "Continue monitoring weather forecasts.",
-
             "Stay alert during heavy rainfall.",
-
             "Follow local safety advisories."
-
         ]
 
+    # ---------------------------------------------------
+    # DISPLAY RESULT
+    # ---------------------------------------------------
+
     return render_template(
-
         "index.html",
-
         prediction=result,
-
         status=status,
-
         advice=advice,
-
         districts=district_encoder.classes_,
-
         months=month_encoder.classes_
-
     )
 
 
