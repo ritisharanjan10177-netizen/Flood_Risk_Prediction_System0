@@ -1,40 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Flood Risk Prediction System</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <style>
+
+        /* =====================================================
+           TOP NAVIGATION
+        ===================================================== */
+
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: #161b22;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: #1f6feb;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .nav-link:hover {
+            background: #388bfd;
+        }
+
+    </style>
 
 </head>
 
+
 <body>
+
+
+<!-- =========================================================
+     NAVIGATION
+========================================================= -->
+
+<nav class="top-nav">
+
+    <a href="/" class="nav-link">
+        Flood Prediction
+    </a>
+
+    <a href="/analysis" class="nav-link">
+        Historical Analysis
+    </a>
+
+    <a href="/model-performance" class="nav-link">
+        Model Performance
+    </a>
+
+</nav>
+
+
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
 
 <div class="header">
 
-    <h1>🌊 Flood Risk Prediction System</h1>
+    <h1>
+        🌊 Flood Risk Prediction System
+    </h1>
 
     <p>
-        Machine Learning Based Early Flood Warning System for Tamil Nadu
+        Machine Learning Based Early Flood Warning System
+        for Tamil Nadu
     </p>
 
 </div>
 
 
-<form action="/predict" method="POST">
+
+<!-- =========================================================
+     PREDICTION FORM
+========================================================= -->
+
+<form
+    action="/predict"
+    method="POST"
+>
+
 
     <!-- DISTRICT -->
 
-    <label>Select District</label>
+    <label>
+        Select District
+    </label>
 
-    <select name="district" required>
 
-        <option value="" disabled selected>
+    <select
+        name="district"
+        required
+    >
+
+        <option
+            value=""
+            disabled
+            selected
+        >
             Select a district
         </option>
+
 
         {% for district in districts %}
 
@@ -47,35 +139,86 @@
     </select>
 
 
+
     <!-- MONTH -->
 
-    <label>Select Month</label>
+    <label>
+        Select Month
+    </label>
 
-    <select name="month" required>
 
-        <option value="" disabled selected>
+    <select
+        name="month"
+        required
+    >
+
+        <option
+            value=""
+            disabled
+            selected
+        >
             Select a month
         </option>
 
-        <option value="1">January</option>
-        <option value="2">February</option>
-        <option value="3">March</option>
-        <option value="4">April</option>
-        <option value="5">May</option>
-        <option value="6">June</option>
-        <option value="7">July</option>
-        <option value="8">August</option>
-        <option value="9">September</option>
-        <option value="10">October</option>
-        <option value="11">November</option>
-        <option value="12">December</option>
+
+        <option value="January">
+            January
+        </option>
+
+        <option value="February">
+            February
+        </option>
+
+        <option value="March">
+            March
+        </option>
+
+        <option value="April">
+            April
+        </option>
+
+        <option value="May">
+            May
+        </option>
+
+        <option value="June">
+            June
+        </option>
+
+        <option value="July">
+            July
+        </option>
+
+        <option value="August">
+            August
+        </option>
+
+        <option value="September">
+            September
+        </option>
+
+        <option value="October">
+            October
+        </option>
+
+        <option value="November">
+            November
+        </option>
+
+        <option value="December">
+            December
+        </option>
 
     </select>
 
 
+
     <!-- TOTAL RAINFALL -->
 
-    <label>Total Rainfall (mm)</label>
+    <label>
+        Total Rainfall (mm)
+    </label>
+
 
     <input
         type="number"
@@ -88,6 +231,7 @@
     >
 
 
+
     <!-- PREDICT BUTTON -->
 
     <button type="submit">
@@ -96,15 +240,22 @@
 
     </button>
 
+
 </form>
 
 
-<!-- PREDICTION RESULT -->
+
+<!-- =========================================================
+     PREDICTION RESULT
+========================================================= -->
 
 {% if prediction %}
 
+
 <div class="result {{ status }}">
 
+
+    <!-- FINAL RISK BADGE -->
 
     {% if status == "high" %}
 
@@ -125,6 +276,9 @@
     {% endif %}
 
 
+
+    <!-- FINAL RESULT -->
+
     <h2>
 
         {{ prediction }}
@@ -132,52 +286,176 @@
     </h2>
 
 
+
+    <!-- DISTRICT -->
+
     <p>
 
-        <strong>District:</strong>
+        <strong>
+            District:
+        </strong>
 
         {{ request.form['district'] }}
 
     </p>
 
 
+
+    <!-- MONTH -->
+
     <p>
 
-        <strong>Month:</strong>
+        <strong>
+            Month:
+        </strong>
 
-        {% set month_names = {
+        {{ request.form['month'] }}
 
-            '1': 'January',
-            '2': 'February',
-            '3': 'March',
-            '4': 'April',
-            '5': 'May',
-            '6': 'June',
-            '7': 'July',
-            '8': 'August',
-            '9': 'September',
-            '10': 'October',
-            '11': 'November',
-            '12': 'December'
+    </p>
 
-        } %}
 
-        {{ month_names.get(
-            request.form['month'],
-            request.form['month']
-        ) }}
+
+    <!-- RAINFALL -->
+
+    <p>
+
+        <strong>
+            Rainfall:
+        </strong>
+
+        {{ request.form['rainfall'] }}
+        mm
+
+    </p>
+
+
+
+    <!-- =====================================================
+         INDIVIDUAL MODEL PREDICTIONS
+    ====================================================== -->
+
+    <h3>
+        🤖 Model Predictions
+    </h3>
+
+
+    <div class="model-results">
+
+
+        <!-- RANDOM FOREST -->
+
+        <p>
+
+            <strong>
+                Random Forest:
+            </strong>
+
+            {% if rf_prediction == "High" %}
+
+                <span>
+                    🔴 High Risk
+                </span>
+
+            {% else %}
+
+                <span>
+                    🟢 Low Risk
+                </span>
+
+            {% endif %}
+
+        </p>
+
+
+
+        <!-- DECISION TREE -->
+
+        <p>
+
+            <strong>
+                Decision Tree:
+            </strong>
+
+            {% if dt_prediction == "High" %}
+
+                <span>
+                    🔴 High Risk
+                </span>
+
+            {% else %}
+
+                <span>
+                    🟢 Low Risk
+                </span>
+
+            {% endif %}
+
+        </p>
+
+
+
+        <!-- LOGISTIC REGRESSION -->
+
+        <p>
+
+            <strong>
+                Logistic Regression:
+            </strong>
+
+            {% if lr_prediction == "High" %}
+
+                <span>
+                    🔴 High Risk
+                </span>
+
+            {% else %}
+
+                <span>
+                    🟢 Low Risk
+                </span>
+
+            {% endif %}
+
+        </p>
+
+
+    </div>
+
+
+
+    <!-- =====================================================
+         COMBINED MODEL RESULT
+    ====================================================== -->
+
+    <h3>
+        🧠 Combined Model Decision
+    </h3>
+
+
+    <p>
+
+        The final prediction is generated using
+        <strong>majority voting</strong>
+        among the three machine learning models.
 
     </p>
 
 
     <p>
 
-        <strong>Rainfall:</strong>
+        <strong>
+            Final Result:
+        </strong>
 
-        {{ request.form['rainfall'] }} mm
+        {{ prediction }}
 
     </p>
 
+
+
+    <!-- =====================================================
+         RECOMMENDED ACTIONS
+    ====================================================== -->
 
     <h3>
 
@@ -203,12 +481,17 @@
 
 </div>
 
+
 {% endif %}
 
 
-<!-- ABOUT SYSTEM -->
+
+<!-- =========================================================
+     ABOUT SYSTEM
+========================================================= -->
 
 <div class="info-card">
+
 
     <h3>
 
@@ -219,27 +502,44 @@
 
     <p>
 
-        This Flood Risk Prediction System is a Machine Learning-based web application
-        developed to estimate the possibility of flood occurrence in Tamil Nadu.
-        The prediction is based on three important parameters:
+        This Flood Risk Prediction System is a
+        Machine Learning-based web application
+        developed to estimate rainfall-induced flood
+        risk in Tamil Nadu.
+
+        The system uses three important parameters:
         <strong>District</strong>,
         <strong>Month</strong> and
         <strong>Total Rainfall</strong>.
-        A trained Random Forest machine learning model analyzes these inputs
-        and predicts whether the selected area has a
-        <strong>High Flood Risk</strong> or
-        <strong>Low Flood Risk</strong>.
-        The system also provides safety recommendations to help users take
-        preventive measures during heavy rainfall.
+
+        Three machine learning models are used in the
+        prediction process:
+
+        <strong>Random Forest</strong>,
+        <strong>Decision Tree</strong> and
+        <strong>Logistic Regression</strong>.
+
+        The predictions from all three models are
+        combined using a majority voting approach
+        to generate the final flood-risk result.
+
+        The system also provides safety recommendations
+        to help users take preventive measures during
+        periods of heavy rainfall.
 
     </p>
+
 
 </div>
 
 
-<!-- EMERGENCY HELPLINE -->
+
+<!-- =========================================================
+     EMERGENCY HELPLINE
+========================================================= -->
 
 <div class="info-card">
+
 
     <h3>
 
@@ -250,57 +550,88 @@
 
     <ul>
 
-        <li>
-            🚑 Ambulance : <strong>108</strong>
-        </li>
 
         <li>
-            🚒 Fire Service : <strong>101</strong>
+
+            🚑 Ambulance :
+            <strong>108</strong>
+
         </li>
 
-        <li>
-            👮 Police : <strong>100</strong>
-        </li>
 
         <li>
-            🌊 Disaster Management : <strong>1070</strong>
+
+            🚒 Fire Service :
+            <strong>101</strong>
+
         </li>
+
+
+        <li>
+
+            👮 Police :
+            <strong>100</strong>
+
+        </li>
+
+
+        <li>
+
+            🌊 Disaster Management :
+            <strong>1070</strong>
+
+        </li>
+
 
     </ul>
+
 
 </div>
 
 
-<!-- AUTOMATIC RAINFALL JAVASCRIPT -->
+
+<!-- =========================================================
+     AUTOMATIC RAINFALL JAVASCRIPT
+========================================================= -->
 
 <script>
 
+
 const districtSelect =
-    document.querySelector('select[name="district"]');
+    document.querySelector(
+        'select[name="district"]'
+    );
+
 
 const monthSelect =
-    document.querySelector('select[name="month"]');
+    document.querySelector(
+        'select[name="month"]'
+    );
+
 
 const rainfallInput =
-    document.getElementById('rainfall');
+    document.getElementById(
+        'rainfall'
+    );
+
 
 
 async function updateRainfall() {
 
+
     const district =
         districtSelect.value;
+
 
     const month =
         monthSelect.value;
 
 
-    /*
-        Keep rainfall blank
-        until both district
-        and month are selected.
-    */
 
-    if (!district || !month) {
+    if (
+        !district ||
+        !month
+    ) {
 
         rainfallInput.value = "";
 
@@ -309,22 +640,20 @@ async function updateRainfall() {
     }
 
 
+
     try {
 
-        const response = await fetch(
-            `/get_rainfall?district=${encodeURIComponent(district)}&month=${encodeURIComponent(month)}`
-        );
+
+        const response =
+            await fetch(
+                `/get_rainfall?district=${encodeURIComponent(district)}&month=${encodeURIComponent(month)}`
+            );
 
 
         const data =
             await response.json();
 
 
-        /*
-            If rainfall exists,
-            automatically put it
-            inside the rainfall box.
-        */
 
         if (
             data.rainfall !== null &&
@@ -345,24 +674,25 @@ async function updateRainfall() {
 
     }
 
+
     catch (error) {
+
 
         console.error(
             "Rainfall error:",
             error
         );
 
+
         rainfallInput.value = "";
 
+
     }
+
 
 }
 
 
-/*
-    Run the rainfall function
-    whenever the district changes.
-*/
 
 districtSelect.addEventListener(
     "change",
@@ -370,15 +700,12 @@ districtSelect.addEventListener(
 );
 
 
-/*
-    Run the rainfall function
-    whenever the month changes.
-*/
 
 monthSelect.addEventListener(
     "change",
     updateRainfall
 );
+
 
 </script>
 

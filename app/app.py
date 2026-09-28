@@ -1,317 +1,242 @@
 from flask import Flask, render_template, request, jsonify
 import joblib
-import csv
+import pandas as pd
 import os
-import re
-
 
 app = Flask(__name__)
 
+# ============================================================
+# PATHS
+# ============================================================
 
-# ---------------------------------------------------
-# LOAD TRAINED MODEL
-# ---------------------------------------------------
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(APP_DIR)
 
-model = joblib.load("flood_model.pkl")
-
-
-# ---------------------------------------------------
-# LOAD ENCODERS
-# ---------------------------------------------------
-
-district_encoder = joblib.load("district_encoder.pkl")
-month_encoder = joblib.load("month_encoder.pkl")
+DATASET_FILE = os.path.join(
+    PROJECT_DIR,
+    "dataset",
+    "raw_data",
+    "TN_IMD_Risk_Dataset.csv"
+)
 
 
-# ---------------------------------------------------
-# MONTH NAME NORMALIZATION
-# ---------------------------------------------------
+# ============================================================
+# LOAD MACHINE LEARNING MODELS
+# ============================================================
 
-def normalize_month(month):
-    month = str(month).strip().lower()
+random_forest_model = joblib.load(
+    os.path.join(APP_DIR, "random_forest_model.pkl")
+)
 
-    months = {
-        "1": "january",
-        "jan": "january",
-        "january": "january",
+decision_tree_model = joblib.load(
+    os.path.join(APP_DIR, "decision_tree_model.pkl")
+)
 
-        "2": "february",
-        "feb": "february",
-        "february": "february",
+logistic_regression_model = joblib.load(
+    os.path.join(APP_DIR, "logistic_regression_model.pkl")
+)
 
-        "3": "march",
-        "mar": "march",
-        "march": "march",
+scaler = joblib.load(
+    os.path.join(APP_DIR, "scaler.pkl")
+)
 
-        "4": "april",
-        "apr": "april",
-        "april": "april",
+district_encoder = joblib.load(
+    os.path.join(APP_DIR, "district_encoder.pkl")
+)
 
-        "5": "may",
-        "may": "may",
+risk_encoder = joblib.load(
+    os.path.join(APP_DIR, "risk_encoder.pkl")
+)
 
-        "6": "june",
-        "jun": "june",
-        "june": "june",
 
-        "7": "july",
-        "jul": "july",
-        "july": "july",
+# ============================================================
+# MONTH INFORMATION
+# ============================================================
 
-        "8": "august",
-        "aug": "august",
-        "august": "august",
+MONTH_NUMBERS = {
+    "January": 1,
+    "February": 2,
+    "March": 3,
+    "April": 4,
+    "May": 5,
+    "June": 6,
+    "July": 7,
+    "August": 8,
+    "September": 9,
+    "October": 10,
+    "November": 11,
+    "December": 12
+}
 
-        "9": "september",
-        "sep": "september",
-        "sept": "september",
-        "september": "september",
 
-        "10": "october",
-        "oct": "october",
-        "october": "october",
+MONTH_ABBREVIATIONS = {
+    "January": "Jan",
+    "February": "Feb",
+    "March": "Mar",
+    "April": "Apr",
+    "May": "May",
+    "June": "Jun",
+    "July": "Jul",
+    "August": "Aug",
+    "September": "Sep",
+    "October": "Oct",
+    "November": "Nov",
+    "December": "Dec"
+}
 
-        "11": "november",
-        "nov": "november",
-        "november": "november",
 
-        "12": "december",
-        "dec": "december",
-        "december": "december"
+# ============================================================
+# NORMALIZE MONTH
+# ============================================================
+
+def normalize_month(month_value):
+
+    month_map = {
+        "1": "January",
+        "2": "February",
+        "3": "March",
+        "4": "April",
+        "5": "May",
+        "6": "June",
+        "7": "July",
+        "8": "August",
+        "9": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
     }
 
-    return months.get(month, month)
+    month_value = str(month_value).strip()
 
+    if month_value in month_map:
+        return month_map[month_value]
 
-# ---------------------------------------------------
-# FIND RAINFALL FROM DATASET
-# ---------------------------------------------------
-
-def get_rainfall_from_dataset(district_name, month_name):
-
-    # Dataset location
-    dataset_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        "dataset",
-        "raw_data",
-        "TamilNadu_Rainfall.csv"
-    )
-
-    # If dataset is not found, try the current folder
-    if not os.path.exists(dataset_path):
-        dataset_path = os.path.join(
-            os.path.dirname(__file__),
-            "TamilNadu_Rainfall.csv"
-        )
-
-    if not os.path.exists(dataset_path):
-        return None
-
-    district_name = district_name.strip().lower()
-    month_name = normalize_month(month_name)
-
-    rainfall_values = []
-
-    try:
-
-        with open(
-            dataset_path,
-            "r",
-            encoding="utf-8-sig"
-        ) as file:
-
-            reader = csv.DictReader(file)
-
-            if not reader.fieldnames:
-                return None
-
-            columns = reader.fieldnames
-
-            # ---------------------------------------------------
-            # FIND DISTRICT COLUMN
-            # ---------------------------------------------------
-
-            district_column = None
-
-            for column in columns:
-
-                clean_column = column.strip().lower()
-
-                if clean_column in [
-                    "district",
-                    "district_name",
-                    "district name"
-                ]:
-                    district_column = column
-                    break
-
-            # ---------------------------------------------------
-            # FIND MONTH COLUMN
-            # ---------------------------------------------------
-
-            month_column = None
-
-            for column in columns:
-
-                clean_column = column.strip().lower()
-
-                if clean_column in [
-                    "month",
-                    "months"
-                ]:
-                    month_column = column
-                    break
-
-            if district_column is None:
-                return None
-
-            # ---------------------------------------------------
-            # READ EACH ROW
-            # ---------------------------------------------------
-
-            for row in reader:
-
-                row_district = str(
-                    row.get(district_column, "")
-                ).strip().lower()
-
-                if row_district != district_name:
-                    continue
-
-                # If dataset has a month column
-                if month_column is not None:
-
-                    row_month = normalize_month(
-                        row.get(month_column, "")
-                    )
-
-                    if row_month != month_name:
-                        continue
-
-                # ---------------------------------------------------
-                # FIRST: LOOK FOR TOTAL RAINFALL COLUMN
-                # ---------------------------------------------------
-
-                total_found = False
-
-                for column in columns:
-
-                    clean_column = (
-                        column.strip()
-                        .lower()
-                        .replace(" ", "")
-                        .replace("_", "")
-                    )
-
-                    if (
-                        "total" in clean_column
-                        and "rainfall" in clean_column
-                    ):
-
-                        value = row.get(column, "")
-
-                        try:
-
-                            value = float(
-                                str(value)
-                                .replace(",", "")
-                                .strip()
-                            )
-
-                            rainfall_values.append(value)
-                            total_found = True
-
-                        except (ValueError, TypeError):
-                            pass
-
-                        break
-
-                if total_found:
-                    continue
-
-                # ---------------------------------------------------
-                # OTHERWISE ADD DAILY RAINFALL COLUMNS
-                # ---------------------------------------------------
-
-                daily_total = 0.0
-                found_daily_value = False
-
-                for column in columns:
-
-                    clean_column = column.strip().lower()
-
-                    # Match columns such as:
-                    # 1, 2, 3
-                    # day1, day2
-                    # day_1
-                    # 1st, 2nd, 3rd
-
-                    if (
-                        clean_column.isdigit()
-                        or clean_column.startswith("day")
-                        or re.match(
-                            r"^\d+(st|nd|rd|th)$",
-                            clean_column
-                        )
-                    ):
-
-                        try:
-
-                            value = float(
-                                str(row.get(column, ""))
-                                .replace(",", "")
-                                .strip()
-                            )
-
-                            daily_total += value
-                            found_daily_value = True
-
-                        except (ValueError, TypeError):
-                            pass
-
-                if found_daily_value:
-                    rainfall_values.append(daily_total)
-
-        # ---------------------------------------------------
-        # CALCULATE AVERAGE
-        # ---------------------------------------------------
-
-        if rainfall_values:
-
-            average_rainfall = (
-                sum(rainfall_values)
-                / len(rainfall_values)
-            )
-
-            return round(average_rainfall, 2)
-
-    except Exception as error:
-
-        print(
-            "Rainfall dataset error:",
-            error
-        )
+    if month_value in MONTH_NUMBERS:
+        return month_value
 
     return None
 
 
-# ---------------------------------------------------
+# ============================================================
+# LOAD RAINFALL DATASET
+# ============================================================
+
+def load_rainfall_dataset():
+
+    if not os.path.exists(DATASET_FILE):
+
+        print("Rainfall dataset not found:")
+        print(DATASET_FILE)
+
+        return None
+
+    try:
+
+        df = pd.read_csv(DATASET_FILE)
+
+        return df
+
+    except Exception as error:
+
+        print("Dataset loading error:", error)
+
+        return None
+
+
+# ============================================================
+# GET RAINFALL FROM DATASET
+# ============================================================
+
+def get_rainfall_from_dataset(
+    district_name,
+    month_name
+):
+
+    df = load_rainfall_dataset()
+
+    if df is None:
+        return None
+
+    try:
+
+        normalized_month = normalize_month(
+            month_name
+        )
+
+        if normalized_month is None:
+            return None
+
+        dataset_month = MONTH_ABBREVIATIONS.get(
+            normalized_month
+        )
+
+        if dataset_month is None:
+            return None
+
+        filtered = df[
+            (
+                df["District"].str.upper()
+                ==
+                district_name.upper()
+            )
+            &
+            (
+                df["Month"].str.upper()
+                ==
+                dataset_month.upper()
+            )
+        ]
+
+        if filtered.empty:
+            return None
+
+        rainfall = filtered["Rainfall_mm"].mean()
+
+        return round(float(rainfall), 2)
+
+    except Exception as error:
+
+        print(
+            "Rainfall calculation error:",
+            error
+        )
+
+        return None
+
+
+# ============================================================
 # HOME PAGE
-# ---------------------------------------------------
+# ============================================================
 
 @app.route("/")
 def home():
 
     return render_template(
         "index.html",
+
         districts=district_encoder.classes_,
-        months=month_encoder.classes_
+
+        months=list(
+            MONTH_NUMBERS.keys()
+        ),
+
+        prediction=None,
+
+        status=None,
+
+        advice=[],
+
+        rf_prediction=None,
+
+        dt_prediction=None,
+
+        lr_prediction=None
     )
 
 
-# ---------------------------------------------------
+# ============================================================
 # AUTOMATIC RAINFALL ROUTE
-# ---------------------------------------------------
+# ============================================================
 
 @app.route("/get_rainfall")
 def get_rainfall():
@@ -321,13 +246,12 @@ def get_rainfall():
         ""
     )
 
-    month_name = request.args.get(
+    month_value = request.args.get(
         "month",
         ""
     )
 
-    # Keep rainfall blank until both are selected
-    if not district_name or not month_name:
+    if not district_name or not month_value:
 
         return jsonify({
             "rainfall": None
@@ -335,7 +259,7 @@ def get_rainfall():
 
     rainfall = get_rainfall_from_dataset(
         district_name,
-        month_name
+        month_value
     )
 
     return jsonify({
@@ -343,57 +267,323 @@ def get_rainfall():
     })
 
 
-# ---------------------------------------------------
+# ============================================================
 # FLOOD PREDICTION
-# ---------------------------------------------------
+# ============================================================
 
-@app.route("/predict", methods=["POST"])
+@app.route(
+    "/predict",
+    methods=["POST"]
+)
 def predict():
 
-    # ---------------------------------------------------
-    # GET FORM VALUES
-    # ---------------------------------------------------
-
-    district_name = request.form["district"]
-
-    month_name = request.form["month"]
-
-    rainfall = float(
-        request.form["rainfall"]
+    district_name = request.form.get(
+        "district",
+        ""
     )
 
-    # ---------------------------------------------------
-    # CONVERT NAMES INTO ENCODED VALUES
-    # ---------------------------------------------------
+    month_value = request.form.get(
+        "month",
+        ""
+    )
 
-    district = district_encoder.transform(
-        [district_name]
-    )[0]
+    rainfall_text = request.form.get(
+        "rainfall",
+        ""
+    )
 
-    month = month_encoder.transform(
-        [month_name]
-    )[0]
 
-    # ---------------------------------------------------
-    # FLOOD RISK PREDICTION
-    # ---------------------------------------------------
+    # --------------------------------------------------------
+    # CHECK DISTRICT AND MONTH
+    # --------------------------------------------------------
 
-    # According to the dataset:
-    #
-    # Below 300 mm  → Low Flood Risk
-    # 300 mm or more → High Flood Risk
+    if not district_name or not month_value:
 
-    if rainfall >= 300:
+        return render_template(
+            "index.html",
+
+            districts=district_encoder.classes_,
+
+            months=list(
+                MONTH_NUMBERS.keys()
+            ),
+
+            prediction="Please select a district and month.",
+
+            status="low",
+
+            advice=[],
+
+            rf_prediction=None,
+
+            dt_prediction=None,
+
+            lr_prediction=None
+        )
+
+
+    # --------------------------------------------------------
+    # CONVERT MONTH TO FULL NAME
+    # --------------------------------------------------------
+
+    month_name = normalize_month(
+        month_value
+    )
+
+    if month_name is None:
+
+        return render_template(
+            "index.html",
+
+            districts=district_encoder.classes_,
+
+            months=list(
+                MONTH_NUMBERS.keys()
+            ),
+
+            prediction="Invalid month selected.",
+
+            status="low",
+
+            advice=[],
+
+            rf_prediction=None,
+
+            dt_prediction=None,
+
+            lr_prediction=None
+        )
+
+
+    # --------------------------------------------------------
+    # GET RAINFALL
+    # --------------------------------------------------------
+
+    try:
+
+        rainfall = float(
+            rainfall_text
+        )
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        rainfall = get_rainfall_from_dataset(
+            district_name,
+            month_name
+        )
+
+        if rainfall is None:
+
+            return render_template(
+                "index.html",
+
+                districts=district_encoder.classes_,
+
+                months=list(
+                    MONTH_NUMBERS.keys()
+                ),
+
+                prediction="Rainfall data is not available.",
+
+                status="low",
+
+                advice=[],
+
+                rf_prediction=None,
+
+                dt_prediction=None,
+
+                lr_prediction=None
+            )
+
+
+    # --------------------------------------------------------
+    # ENCODE DISTRICT
+    # --------------------------------------------------------
+
+    try:
+
+        district_code = (
+            district_encoder.transform(
+                [district_name]
+            )[0]
+        )
+
+    except Exception:
+
+        return render_template(
+            "index.html",
+
+            districts=district_encoder.classes_,
+
+            months=list(
+                MONTH_NUMBERS.keys()
+            ),
+
+            prediction="Selected district is not available.",
+
+            status="low",
+
+            advice=[],
+
+            rf_prediction=None,
+
+            dt_prediction=None,
+
+            lr_prediction=None
+        )
+
+
+    # --------------------------------------------------------
+    # CONVERT MONTH NAME TO NUMBER INTERNALLY
+    # --------------------------------------------------------
+
+    month_number = MONTH_NUMBERS.get(
+        month_name
+    )
+
+    if month_number is None:
+
+        return render_template(
+            "index.html",
+
+            districts=district_encoder.classes_,
+
+            months=list(
+                MONTH_NUMBERS.keys()
+            ),
+
+            prediction="Invalid month selected.",
+
+            status="low",
+
+            advice=[],
+
+            rf_prediction=None,
+
+            dt_prediction=None,
+
+            lr_prediction=None
+        )
+
+
+    # --------------------------------------------------------
+    # REFERENCE YEAR
+    # --------------------------------------------------------
+
+    year = 2010
+
+
+    # --------------------------------------------------------
+    # MODEL INPUT
+    # --------------------------------------------------------
+
+    input_data = [[
+        district_code,
+        year,
+        month_number,
+        rainfall
+    ]]
+
+
+    # ========================================================
+    # RANDOM FOREST PREDICTION
+    # ========================================================
+
+    rf_prediction_code = (
+        random_forest_model.predict(
+            input_data
+        )[0]
+    )
+
+    rf_result = (
+        risk_encoder.inverse_transform(
+            [rf_prediction_code]
+        )[0]
+    )
+
+
+    # ========================================================
+    # DECISION TREE PREDICTION
+    # ========================================================
+
+    dt_prediction_code = (
+        decision_tree_model.predict(
+            input_data
+        )[0]
+    )
+
+    dt_result = (
+        risk_encoder.inverse_transform(
+            [dt_prediction_code]
+        )[0]
+    )
+
+
+    # ========================================================
+    # LOGISTIC REGRESSION PREDICTION
+    # ========================================================
+
+    scaled_input = scaler.transform(
+        input_data
+    )
+
+    lr_prediction_code = (
+        logistic_regression_model.predict(
+            scaled_input
+        )[0]
+    )
+
+    lr_result = (
+        risk_encoder.inverse_transform(
+            [lr_prediction_code]
+        )[0]
+    )
+
+
+    # ========================================================
+    # COMBINE ALL THREE MODELS
+    # ========================================================
+
+    predictions = [
+        rf_result,
+        dt_result,
+        lr_result
+    ]
+
+
+    high_count = predictions.count(
+        "High"
+    )
+
+    low_count = predictions.count(
+        "Low"
+    )
+
+
+    # --------------------------------------------------------
+    # MAJORITY VOTING
+    # --------------------------------------------------------
+
+    if high_count >= 2:
 
         result = "HIGH FLOOD RISK"
 
         status = "high"
 
         advice = [
+
             "Avoid travelling to low-lying areas.",
+
             "Keep emergency contacts ready.",
+
             "Stay updated with official weather alerts.",
+
             "Move to safer locations if required."
+
         ]
 
     else:
@@ -403,29 +593,331 @@ def predict():
         status = "low"
 
         advice = [
+
             "No immediate flood danger.",
+
             "Continue monitoring weather forecasts.",
+
             "Stay alert during heavy rainfall.",
+
             "Follow local safety advisories."
+
         ]
 
-    # ---------------------------------------------------
-    # DISPLAY RESULT
-    # ---------------------------------------------------
+
+    # ========================================================
+    # SHOW RESULT
+    # ========================================================
 
     return render_template(
         "index.html",
+
         prediction=result,
+
         status=status,
+
         advice=advice,
+
+        rf_prediction=rf_result,
+
+        dt_prediction=dt_result,
+
+        lr_prediction=lr_result,
+
         districts=district_encoder.classes_,
-        months=month_encoder.classes_
+
+        months=list(
+            MONTH_NUMBERS.keys()
+        )
     )
 
 
-# ---------------------------------------------------
-# RUN APPLICATION
-# ---------------------------------------------------
+# ============================================================
+# PAGE 2 — HISTORICAL ANALYSIS
+# ============================================================
+
+@app.route("/analysis")
+def analysis():
+
+    return render_template(
+        "analysis.html",
+        districts=district_encoder.classes_
+    )
+
+
+# ============================================================
+# PAGE 2 — HISTORICAL ANNUAL DATA
+# ============================================================
+
+@app.route("/historical_data")
+def historical_data():
+
+    district_name = request.args.get(
+        "district",
+        ""
+    )
+
+    if not district_name:
+
+        return jsonify({
+            "success": False
+        })
+
+
+    try:
+
+        df = pd.read_csv(
+            os.path.join(
+                PROJECT_DIR,
+                "dataset",
+                "raw_data",
+                "TN_IMD_District_Rainfall_1901_2010.csv"
+            )
+        )
+
+
+        filtered = df[
+            df["District"].str.upper()
+            ==
+            district_name.upper()
+        ]
+
+
+        if filtered.empty:
+
+            return jsonify({
+                "success": False
+            })
+
+
+        filtered = filtered.dropna(
+            subset=["Annual"]
+        )
+
+
+        filtered = filtered.sort_values(
+            by="Year"
+        )
+
+
+        years = (
+            filtered["Year"]
+            .astype(int)
+            .tolist()
+        )
+
+
+        rainfall_values = (
+            filtered["Annual"]
+            .astype(float)
+            .round(2)
+            .tolist()
+        )
+
+
+        average_rainfall = round(
+            filtered["Annual"].mean(),
+            2
+        )
+
+
+        maximum_rainfall = round(
+            filtered["Annual"].max(),
+            2
+        )
+
+
+        minimum_rainfall = round(
+            filtered["Annual"].min(),
+            2
+        )
+
+
+        return jsonify({
+
+            "success": True,
+
+            "district": district_name,
+
+            "years": years,
+
+            "rainfall": rainfall_values,
+
+            "average": average_rainfall,
+
+            "maximum": maximum_rainfall,
+
+            "minimum": minimum_rainfall
+
+        })
+
+
+    except Exception as error:
+
+        print(
+            "Historical data error:",
+            error
+        )
+
+
+        return jsonify({
+            "success": False
+        })
+
+
+# ============================================================
+# PAGE 2 — MONTHLY RAINFALL PATTERN
+# ============================================================
+
+@app.route("/monthly_rainfall")
+def monthly_rainfall():
+
+    district_name = request.args.get(
+        "district",
+        ""
+    )
+
+    if not district_name:
+
+        return jsonify({
+            "success": False
+        })
+
+
+    try:
+
+        df = pd.read_csv(
+            os.path.join(
+                PROJECT_DIR,
+                "dataset",
+                "raw_data",
+                "TN_IMD_District_Rainfall_1901_2010.csv"
+            )
+        )
+
+
+        filtered = df[
+            df["District"].str.upper()
+            ==
+            district_name.upper()
+        ]
+
+
+        if filtered.empty:
+
+            return jsonify({
+                "success": False
+            })
+
+
+        # ====================================================
+        # MONTH NAMES
+        # ====================================================
+
+        months = [
+
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec"
+
+        ]
+
+
+        monthly_rainfall = []
+
+
+        # ====================================================
+        # CALCULATE AVERAGE RAINFALL FOR EACH MONTH
+        # ====================================================
+
+        for month in months:
+
+            values = pd.to_numeric(
+                filtered[month],
+                errors="coerce"
+            ).dropna()
+
+
+            if values.empty:
+
+                monthly_rainfall.append(
+                    0
+                )
+
+            else:
+
+                monthly_rainfall.append(
+                    round(
+                        values.mean(),
+                        2
+                    )
+                )
+
+
+        return jsonify({
+
+            "success": True,
+
+            "district": district_name,
+
+            "months": months,
+
+            "rainfall": monthly_rainfall
+
+        })
+
+
+    except Exception as error:
+
+        print(
+            "Monthly rainfall error:",
+            error
+        )
+
+
+        return jsonify({
+            "success": False
+        })
+
+
+# ============================================================
+# PAGE 3 — MODEL PERFORMANCE
+# ============================================================
+
+@app.route("/model-performance")
+def model_performance():
+
+    metrics_path = os.path.join(
+        PROJECT_DIR,
+        "dataset",
+        "raw_data",
+        "model_metrics.csv"
+    )
+
+    metrics = pd.read_csv(
+        metrics_path
+    )
+
+    return render_template(
+        "model_performance.html",
+        metrics=metrics.to_dict(
+            orient="records"
+        )
+    )
+
+
+# ============================================================
+# RUN FLASK APPLICATION
+# ============================================================
 
 if __name__ == "__main__":
 

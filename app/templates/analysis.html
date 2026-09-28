@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Historical Rainfall Analysis</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <style>
+
+        /* =====================================================
+           TOP NAVIGATION
+        ===================================================== */
+
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: #161b22;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: #1f6feb;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .nav-link:hover {
+            background: #388bfd;
+        }
+
+
+        /* =====================================================
+           CHART CONTAINERS
+        ===================================================== */
+
+        #chart-container,
+        #monthly-chart-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+
+        #rainfallChart,
+        #monthlyRainfallChart {
+            width: 100%;
+            min-width: 900px;
+            height: 450px;
+            background: #0d1117;
+            border-radius: 12px;
+        }
+
+
+        /* =====================================================
+           STATISTICS
+        ===================================================== */
+
+        .stats-box {
+            margin-top: 20px;
+        }
+
+
+        .stats-box p {
+            margin: 15px 0;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================================
+     TOP NAVIGATION
+========================================================= -->
+
+<nav class="top-nav">
+
+    <a href="/" class="nav-link">
+        Flood Prediction
+    </a>
+
+    <a href="/analysis" class="nav-link">
+        Historical Analysis
+    </a>
+
+    <a href="/model-performance" class="nav-link">
+        Model Performance
+    </a>
+
+</nav>
+
+
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<div class="header">
+
+    <h1>
+        📊 Historical Rainfall Analysis
+    </h1>
+
+    <p>
+        Historical rainfall patterns across Tamil Nadu
+    </p>
+
+</div>
+
+
+
+<!-- =========================================================
+     DISTRICT SELECTION
+========================================================= -->
+
+<div class="info-card">
+
+    <h3>
+        📍 Select District
+    </h3>
+
+
+    <select id="district">
+
+        <option value="">
+            Select a district
+        </option>
+
+
+        {% for district in districts %}
+
+        <option value="{{ district }}">
+            {{ district }}
+        </option>
+
+        {% endfor %}
+
+    </select>
+
+</div>
+
+
+
+<!-- =========================================================
+     ANNUAL RAINFALL TREND
+========================================================= -->
+
+<div class="info-card">
+
+    <h3>
+        📈 Annual Rainfall Trend
+    </h3>
+
+
+    <p id="chart-message">
+
+        Select a district to view historical rainfall.
+
+    </p>
+
+
+    <div id="chart-container">
+
+        <canvas
+            id="rainfallChart"
+            width="1200"
+            height="450"
+        >
+        </canvas>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     MONTHLY RAINFALL PATTERN
+========================================================= -->
+
+<div class="info-card">
+
+    <h3>
+        📅 Monthly Rainfall Pattern
+    </h3>
+
+
+    <p id="monthly-chart-message">
+
+        Select a district to view its monthly rainfall pattern.
+
+    </p>
+
+
+    <div id="monthly-chart-container">
+
+        <canvas
+            id="monthlyRainfallChart"
+            width="1200"
+            height="450"
+        >
+        </canvas>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     HISTORICAL INFORMATION
+========================================================= -->
+
+<div class="info-card">
+
+    <h3>
+        📌 Historical Information
+    </h3>
+
+
+    <div
+        id="rainfall-info"
+        class="stats-box"
+    >
+
+        <p>
+            Select a district to view its rainfall information.
+        </p>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script>
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const districtSelect =
+    document.getElementById(
+        "district"
+    );
+
+
+const chart =
+    document.getElementById(
+        "rainfallChart"
+    );
+
+
+const ctx =
+    chart.getContext(
+        "2d"
+    );
+
+
+const monthlyChart =
+    document.getElementById(
+        "monthlyRainfallChart"
+    );
+
+
+const monthlyCtx =
+    monthlyChart.getContext(
+        "2d"
+    );
+
+
+const chartMessage =
+    document.getElementById(
+        "chart-message"
+    );
+
+
+const monthlyChartMessage =
+    document.getElementById(
+        "monthly-chart-message"
+    );
+
+
+const rainfallInfo =
+    document.getElementById(
+        "rainfall-info"
+    );
+
+
+
+/* =========================================================
+   DRAW ANNUAL RAINFALL GRAPH
+========================================================= */
+
+function drawChart(
+    years,
+    rainfall,
+    district
+) {
+
+
+    ctx.clearRect(
+        0,
+        0,
+        chart.width,
+        chart.height
+    );
+
+
+    if (
+        !years.length ||
+        !rainfall.length
+    ) {
+
+        return;
+
+    }
+
+
+    const paddingLeft = 70;
+
+    const paddingRight = 30;
+
+    const paddingTop = 40;
+
+    const paddingBottom = 60;
+
+
+    const graphWidth =
+        chart.width
+        -
+        paddingLeft
+        -
+        paddingRight;
+
+
+    const graphHeight =
+        chart.height
+        -
+        paddingTop
+        -
+        paddingBottom;
+
+
+    const maxRainfall =
+        Math.max(
+            ...rainfall
+        );
+
+
+    const minRainfall = 0;
+
+
+    /* Background */
+
+    ctx.fillStyle =
+        "#0d1117";
+
+    ctx.fillRect(
+        0,
+        0,
+        chart.width,
+        chart.height
+    );
+
+
+    /* Title */
+
+    ctx.fillStyle =
+        "#4fc3f7";
+
+    ctx.font =
+        "bold 20px Arial";
+
+    ctx.fillText(
+        district + " Annual Rainfall",
+        paddingLeft,
+        25
+    );
+
+
+    /* Axes */
+
+    ctx.strokeStyle =
+        "#8b949e";
+
+    ctx.lineWidth = 1;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        paddingLeft,
+        paddingTop
+    );
+
+    ctx.lineTo(
+        paddingLeft,
+        chart.height - paddingBottom
+    );
+
+    ctx.lineTo(
+        chart.width - paddingRight,
+        chart.height - paddingBottom
+    );
+
+    ctx.stroke();
+
+
+    /* Horizontal grid lines */
+
+    ctx.font =
+        "12px Arial";
+
+    ctx.fillStyle =
+        "#8b949e";
+
+
+    const gridLines = 5;
+
+
+    for (
+        let i = 0;
+        i <= gridLines;
+        i++
+    ) {
+
+
+        const y =
+            paddingTop
+            +
+            (
+                graphHeight
+                *
+                i
+                /
+                gridLines
+            );
+
+
+        ctx.strokeStyle =
+            "#30363d";
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            paddingLeft,
+            y
+        );
+
+        ctx.lineTo(
+            chart.width - paddingRight,
+            y
+        );
+
+        ctx.stroke();
+
+
+        const value =
+            maxRainfall
+            -
+            (
+                maxRainfall
+                *
+                i
+                /
+                gridLines
+            );
+
+
+        ctx.fillText(
+            value.toFixed(0),
+            10,
+            y + 4
+        );
+
+    }
+
+
+    /* Rainfall line */
+
+    ctx.strokeStyle =
+        "#4fc3f7";
+
+    ctx.lineWidth = 3;
+
+
+    ctx.beginPath();
+
+
+    for (
+        let i = 0;
+        i < years.length;
+        i++
+    ) {
+
+
+        const x =
+            paddingLeft
+            +
+            (
+                i
+                /
+                (
+                    years.length - 1
+                )
+            )
+            *
+            graphWidth;
+
+
+        const y =
+            paddingTop
+            +
+            graphHeight
+            -
+            (
+                (
+                    rainfall[i]
+                    -
+                    minRainfall
+                )
+                /
+                (
+                    maxRainfall
+                    -
+                    minRainfall
+                )
+            )
+            *
+            graphHeight;
+
+
+        if (i === 0) {
+
+            ctx.moveTo(
+                x,
+                y
+            );
+
+        }
+
+        else {
+
+            ctx.lineTo(
+                x,
+                y
+            );
+
+        }
+
+    }
+
+
+    ctx.stroke();
+
+
+    /* X-axis labels */
+
+    ctx.fillStyle =
+        "#8b949e";
+
+    ctx.font =
+        "12px Arial";
+
+
+    const labelCount = 6;
+
+
+    for (
+        let i = 0;
+        i < labelCount;
+        i++
+    ) {
+
+
+        const index =
+            Math.floor(
+                i
+                *
+                (
+                    years.length - 1
+                )
+                /
+                (
+                    labelCount - 1
+                )
+            );
+
+
+        const x =
+            paddingLeft
+            +
+            (
+                index
+                /
+                (
+                    years.length - 1
+                )
+            )
+            *
+            graphWidth;
+
+
+        ctx.fillText(
+            years[index],
+            x - 15,
+            chart.height - 25
+        );
+
+    }
+
+
+    /* Axis labels */
+
+    ctx.fillText(
+        "Year",
+        chart.width / 2 - 15,
+        chart.height - 5
+    );
+
+
+    ctx.save();
+
+
+    ctx.translate(
+        15,
+        chart.height / 2
+    );
+
+
+    ctx.rotate(
+        -Math.PI / 2
+    );
+
+
+    ctx.fillText(
+        "Annual Rainfall (mm)",
+        0,
+        0
+    );
+
+
+    ctx.restore();
+
+}
+
+
+
+/* =========================================================
+   DRAW MONTHLY RAINFALL GRAPH
+========================================================= */
+
+function drawMonthlyChart(
+    months,
+    rainfall,
+    district
+) {
+
+
+    monthlyCtx.clearRect(
+        0,
+        0,
+        monthlyChart.width,
+        monthlyChart.height
+    );
+
+
+    if (
+        !months.length ||
+        !rainfall.length
+    ) {
+
+        return;
+
+    }
+
+
+    const paddingLeft = 70;
+
+    const paddingRight = 30;
+
+    const paddingTop = 50;
+
+    const paddingBottom = 70;
+
+
+    const graphWidth =
+        monthlyChart.width
+        -
+        paddingLeft
+        -
+        paddingRight;
+
+
+    const graphHeight =
+        monthlyChart.height
+        -
+        paddingTop
+        -
+        paddingBottom;
+
+
+    const maxRainfall =
+        Math.max(
+            ...rainfall
+        );
+
+
+    /* Background */
+
+    monthlyCtx.fillStyle =
+        "#0d1117";
+
+    monthlyCtx.fillRect(
+        0,
+        0,
+        monthlyChart.width,
+        monthlyChart.height
+    );
+
+
+    /* Title */
+
+    monthlyCtx.fillStyle =
+        "#4fc3f7";
+
+    monthlyCtx.font =
+        "bold 20px Arial";
+
+    monthlyCtx.fillText(
+        district + " Average Monthly Rainfall",
+        paddingLeft,
+        28
+    );
+
+
+    /* Axes */
+
+    monthlyCtx.strokeStyle =
+        "#8b949e";
+
+    monthlyCtx.lineWidth = 1;
+
+
+    monthlyCtx.beginPath();
+
+    monthlyCtx.moveTo(
+        paddingLeft,
+        paddingTop
+    );
+
+    monthlyCtx.lineTo(
+        paddingLeft,
+        monthlyChart.height - paddingBottom
+    );
+
+    monthlyCtx.lineTo(
+        monthlyChart.width - paddingRight,
+        monthlyChart.height - paddingBottom
+    );
+
+    monthlyCtx.stroke();
+
+
+    /* Grid lines */
+
+    monthlyCtx.font =
+        "12px Arial";
+
+    monthlyCtx.fillStyle =
+        "#8b949e";
+
+
+    const gridLines = 5;
+
+
+    for (
+        let i = 0;
+        i <= gridLines;
+        i++
+    ) {
+
+
+        const y =
+            paddingTop
+            +
+            (
+                graphHeight
+                *
+                i
+                /
+                gridLines
+            );
+
+
+        monthlyCtx.strokeStyle =
+            "#30363d";
+
+
+        monthlyCtx.beginPath();
+
+        monthlyCtx.moveTo(
+            paddingLeft,
+            y
+        );
+
+        monthlyCtx.lineTo(
+            monthlyChart.width - paddingRight,
+            y
+        );
+
+        monthlyCtx.stroke();
+
+
+        const value =
+            maxRainfall
+            -
+            (
+                maxRainfall
+                *
+                i
+                /
+                gridLines
+            );
+
+
+        monthlyCtx.fillText(
+            value.toFixed(0),
+            10,
+            y + 4
+        );
+
+    }
+
+
+    /* Bars */
+
+    const barWidth =
+        graphWidth
+        /
+        months.length
+        *
+        0.65;
+
+
+    for (
+        let i = 0;
+        i < months.length;
+        i++
+    ) {
+
+
+        const barHeight =
+            (
+                rainfall[i]
+                /
+                maxRainfall
+            )
+            *
+            graphHeight;
+
+
+        const x =
+            paddingLeft
+            +
+            (
+                i
+                *
+                graphWidth
+                /
+                months.length
+            )
+            +
+            (
+                graphWidth
+                /
+                months.length
+                -
+                barWidth
+            )
+            /
+            2;
+
+
+        const y =
+            monthlyChart.height
+            -
+            paddingBottom
+            -
+            barHeight;
+
+
+        monthlyCtx.fillStyle =
+            "#4fc3f7";
+
+
+        monthlyCtx.fillRect(
+            x,
+            y,
+            barWidth,
+            barHeight
+        );
+
+
+        /* Month labels */
+
+        monthlyCtx.fillStyle =
+            "#8b949e";
+
+        monthlyCtx.font =
+            "12px Arial";
+
+
+        monthlyCtx.fillText(
+            months[i],
+            x + barWidth / 2 - 10,
+            monthlyChart.height - 40
+        );
+
+
+        /* Rainfall values */
+
+        monthlyCtx.fillStyle =
+            "#ffffff";
+
+        monthlyCtx.font =
+            "11px Arial";
+
+
+        monthlyCtx.fillText(
+            rainfall[i].toFixed(1),
+            x + barWidth / 2 - 12,
+            y - 8
+        );
+
+    }
+
+
+    /* Axis label */
+
+    monthlyCtx.fillStyle =
+        "#8b949e";
+
+    monthlyCtx.font =
+        "12px Arial";
+
+
+    monthlyCtx.fillText(
+        "Month",
+        monthlyChart.width / 2 - 20,
+        monthlyChart.height - 10
+    );
+
+
+    monthlyCtx.save();
+
+
+    monthlyCtx.translate(
+        15,
+        monthlyChart.height / 2
+    );
+
+
+    monthlyCtx.rotate(
+        -Math.PI / 2
+    );
+
+
+    monthlyCtx.fillText(
+        "Average Rainfall (mm)",
+        0,
+        0
+    );
+
+
+    monthlyCtx.restore();
+
+}
+
+
+
+/* =========================================================
+   DISTRICT CHANGE
+========================================================= */
+
+districtSelect.addEventListener(
+    "change",
+    async function() {
+
+
+        const district =
+            this.value;
+
+
+        if (!district) {
+
+            return;
+
+        }
+
+
+        chartMessage.innerText =
+            "Loading historical rainfall data...";
+
+
+        monthlyChartMessage.innerText =
+            "Loading monthly rainfall pattern...";
+
+
+        try {
+
+
+            /* =========================================
+               ANNUAL DATA
+            ========================================= */
+
+
+            const response =
+                await fetch(
+                    `/historical_data?district=${encodeURIComponent(district)}`
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!data.success) {
+
+
+                chartMessage.innerText =
+                    "Historical data is not available.";
+
+
+                return;
+
+            }
+
+
+            /* Draw annual graph */
+
+            drawChart(
+                data.years,
+                data.rainfall,
+                data.district
+            );
+
+
+            chartMessage.innerText =
+                "Historical annual rainfall from 1901 to 2010.";
+
+
+            /* Show statistics */
+
+            rainfallInfo.innerHTML = `
+
+                <p>
+                    <strong>District:</strong>
+                    ${data.district}
+                </p>
+
+                <p>
+                    <strong>Average Rainfall:</strong>
+                    ${data.average} mm
+                </p>
+
+                <p>
+                    <strong>Highest Rainfall:</strong>
+                    ${data.maximum} mm
+                </p>
+
+                <p>
+                    <strong>Lowest Rainfall:</strong>
+                    ${data.minimum} mm
+                </p>
+
+            `;
+
+
+            /* =========================================
+               MONTHLY DATA
+            ========================================= */
+
+
+            const monthlyResponse =
+                await fetch(
+                    `/monthly_rainfall?district=${encodeURIComponent(district)}`
+                );
+
+
+            const monthlyData =
+                await monthlyResponse.json();
+
+
+            if (!monthlyData.success) {
+
+
+                monthlyChartMessage.innerText =
+                    "Monthly rainfall data is not available.";
+
+
+                return;
+
+            }
+
+
+            /* Draw monthly graph */
+
+            drawMonthlyChart(
+                monthlyData.months,
+                monthlyData.rainfall,
+                monthlyData.district
+            );
+
+
+            monthlyChartMessage.innerText =
+                "Average monthly rainfall calculated from historical data from 1901 to 2010.";
+
+
+        }
+
+
+        catch (error) {
+
+
+            console.error(
+                "Historical data error:",
+                error
+            );
+
+
+            chartMessage.innerText =
+                "Unable to load historical data.";
+
+
+            monthlyChartMessage.innerText =
+                "Unable to load monthly rainfall data.";
+
+        }
+
+    }
+
+);
+
+
+</script>
+
+
+</body>
+
+</html>

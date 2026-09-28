@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Model Performance Comparison</title>
+
+
+    <style>
+
+        /* =====================================================
+           BODY
+        ===================================================== */
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0d1117;
+            color: white;
+        }
+
+
+        /* =====================================================
+           TOP NAVIGATION
+        ===================================================== */
+
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: #161b22;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: #1f6feb;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+
+        .nav-link:hover {
+            background: #388bfd;
+        }
+
+
+        /* =====================================================
+           MAIN CONTAINER
+        ===================================================== */
+
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 40px auto;
+        }
+
+
+        /* =====================================================
+           HEADINGS
+        ===================================================== */
+
+        h1 {
+            text-align: center;
+            color: #4fc3f7;
+            margin-bottom: 10px;
+        }
+
+
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 35px;
+        }
+
+
+        h2 {
+            color: #4fc3f7;
+            margin-top: 0;
+        }
+
+
+        /* =====================================================
+           CARDS
+        ===================================================== */
+
+        .card {
+            background: #161b22;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow:
+                0 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+
+        /* =====================================================
+           TABLE
+        ===================================================== */
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+
+        th,
+        td {
+            padding: 14px;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+        }
+
+
+        th {
+            color: #4fc3f7;
+            background: #0d1117;
+        }
+
+
+        td {
+            color: #ddd;
+        }
+
+
+        tr:hover {
+            background: #21262d;
+        }
+
+
+        /* =====================================================
+           CHART
+        ===================================================== */
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            margin-top: 25px;
+        }
+
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+
+        /* =====================================================
+           OLD BACK BUTTON
+        ===================================================== */
+
+        .back-button {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 12px 20px;
+            background: #1f6feb;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+
+        .back-button:hover {
+            background: #388bfd;
+        }
+
+    </style>
+
+</head>
+
+
+
+<body>
+
+
+<!-- =========================================================
+     TOP NAVIGATION
+========================================================= -->
+
+<nav class="top-nav">
+
+    <a href="/" class="nav-link">
+        Flood Prediction
+    </a>
+
+    <a href="/analysis" class="nav-link">
+        Historical Analysis
+    </a>
+
+    <a href="/model-performance" class="nav-link">
+        Model Performance
+    </a>
+
+</nav>
+
+
+
+<!-- =========================================================
+     MAIN CONTAINER
+========================================================= -->
+
+<div class="container">
+
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <h1>
+        Model Performance Comparison
+    </h1>
+
+
+    <p class="subtitle">
+
+        Comparison of the three machine learning models used for
+        rainfall-induced flood risk classification
+
+    </p>
+
+
+
+    <!-- =====================================================
+         PERFORMANCE TABLE
+    ====================================================== -->
+
+    <div class="card">
+
+        <h2>
+            Performance Metrics
+        </h2>
+
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Model
+                    </th>
+
+                    <th>
+                        Accuracy
+                    </th>
+
+                    <th>
+                        Precision
+                    </th>
+
+                    <th>
+                        Recall
+                    </th>
+
+                    <th>
+                        F1 Score
+                    </th>
+
+                    <th>
+                        Balanced Accuracy
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="metricsTable">
+
+                {% for model in metrics %}
+
+                <tr>
+
+                    <td>
+                        {{ model["Model"] }}
+                    </td>
+
+                    <td>
+                        {{ "%.2f"|format(model["Accuracy"] * 100) }}%
+                    </td>
+
+                    <td>
+                        {{ "%.2f"|format(model["Precision"] * 100) }}%
+                    </td>
+
+                    <td>
+                        {{ "%.2f"|format(model["Recall"] * 100) }}%
+                    </td>
+
+                    <td>
+                        {{ "%.2f"|format(model["F1 Score"] * 100) }}%
+                    </td>
+
+                    <td>
+                        {{ "%.2f"|format(model["Balanced Accuracy"] * 100) }}%
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         MODEL COMPARISON GRAPH
+    ====================================================== -->
+
+    <div class="card">
+
+        <h2>
+            Model Comparison
+        </h2>
+
+
+        <p style="color:#aaa;">
+
+            Visual comparison of Accuracy, Precision, Recall,
+            F1 Score and Balanced Accuracy.
+
+        </p>
+
+
+        <div class="chart-container">
+
+            <canvas
+                id="performanceChart"
+            >
+            </canvas>
+
+        </div>
+
+    </div>
+
+
+
+</div>
+
+
+
+<!-- =========================================================
+     CHART.JS
+========================================================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
+<script>
+
+
+/* =========================================================
+   MODEL NAMES
+========================================================= */
+
+const modelNames = [
+
+    {% for model in metrics %}
+
+        "{{ model['Model'] }}"
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   ACCURACY
+========================================================= */
+
+const accuracy = [
+
+    {% for model in metrics %}
+
+        {{ model['Accuracy'] * 100 }}
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   PRECISION
+========================================================= */
+
+const precision = [
+
+    {% for model in metrics %}
+
+        {{ model['Precision'] * 100 }}
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   RECALL
+========================================================= */
+
+const recall = [
+
+    {% for model in metrics %}
+
+        {{ model['Recall'] * 100 }}
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   F1 SCORE
+========================================================= */
+
+const f1Score = [
+
+    {% for model in metrics %}
+
+        {{ model['F1 Score'] * 100 }}
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   BALANCED ACCURACY
+========================================================= */
+
+const balancedAccuracy = [
+
+    {% for model in metrics %}
+
+        {{ model['Balanced Accuracy'] * 100 }}
+
+        {% if not loop.last %},{% endif %}
+
+    {% endfor %}
+
+];
+
+
+
+/* =========================================================
+   CREATE CHART
+========================================================= */
+
+const ctx = document
+    .getElementById(
+        "performanceChart"
+    )
+    .getContext("2d");
+
+
+new Chart(
+    ctx,
+    {
+
+        type: "bar",
+
+
+        data: {
+
+            labels: modelNames,
+
+
+            datasets: [
+
+                {
+                    label: "Accuracy",
+                    data: accuracy
+                },
+
+
+                {
+                    label: "Precision",
+                    data: precision
+                },
+
+
+                {
+                    label: "Recall",
+                    data: recall
+                },
+
+
+                {
+                    label: "F1 Score",
+                    data: f1Score
+                },
+
+
+                {
+                    label: "Balanced Accuracy",
+                    data: balancedAccuracy
+                }
+
+            ]
+
+        },
+
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true,
+
+                    max: 100,
+
+
+                    title: {
+
+                        display: true,
+
+                        text: "Performance (%)"
+
+                    }
+
+                },
+
+
+                x: {
+
+                    title: {
+
+                        display: true,
+
+                        text: "Machine Learning Model"
+
+                    }
+
+                }
+
+            },
+
+
+            plugins: {
+
+                legend: {
+
+                    display: true,
+
+                    position: "top"
+
+                }
+
+            }
+
+        }
+
+    }
+
+);
+
+</script>
+
+
+</body>
+
+</html>
